@@ -1,1 +1,42 @@
-# vba_excel_export_code
+# Excel - Export code to flat files
+> Export every code objects (classes, forms, modules and worksheet code) to flat fliles, in a batch mode
+
+## Table of Contents
+
+- [Description](#description)
+- [Install](#install)
+- [Usage](#usage)
+- [Author](#author)
+- [License](#license)
+
+## Description
+
+This VB script will export all code objects (classes, forms, modules and worksheet macro) from an Excel file (can be .xlsm or .xlam) to flat files on your disk.
+
+This way, you'll get a quick backup of your code and you'll be able to synchronize your code on a versionning platform like GitHub.
+
+The script will start Excel (hidden way), open the specified file, process every code object and export them, one by one, in a `\src\your_file.xlsm` folder.
+
+The `src` folder will be automatically created if needed and you'll find a subfolder having the same name of your file (so you can have more than one exported file in the same src folder).
+
+## Install
+
+Just get a copy of the .vbs script, perhaps the .cmd too (for your easiness) and save them in the same folder of your Excel application (containing the code you want to export).
+
+## Usage
+
+Just edit the .cmd file and you'll see how it works : you just need to run the .vbs with one parameter, the name of your file.
+
+![demo](image/demo.png)
+
+## Author
+
+Christophe Avonture
+
+## Contribute
+
+PRs not accepted.
+
+## License
+
+[MIT](LICENSE)
