@@ -193,9 +193,9 @@ Class clsMSExcel
 
 	Public Sub Quit()
 
-		If Not (oApplication Is Nothing) Then
-			oApplication.Quit
-		End If
+		On Error Resume Next
+		oApplication.Quit
+		On Error Goto 0
 
 	End Sub
 
@@ -287,6 +287,7 @@ Class clsMSExcel
 			sFileName = sFolder + "\" + sFileName
 		End If
 
+		oApplication.DisplayAlerts = False
 		Set wb = oApplication.Workbooks.Open(sFileName, bUpdateLinks, bReadOnly)
 
 		If Not (wb is Nothing) Then
@@ -342,8 +343,10 @@ Class clsMSExcel
 
 		End if ' If Not (wb is Nothing) Then
 
+		On error Resume Next
 		wb.Close
 	  Set wb = Nothing
+		On error GOto 0
 
 	End Sub
 
