@@ -288,6 +288,9 @@ Class clsMSExcel
 		End If
 
 		oApplication.DisplayAlerts = False
+		oApplication.EnableEvents = False
+		oApplication.ScreenUpdating = False
+
 		Set wb = oApplication.Workbooks.Open(sFileName, bUpdateLinks, bReadOnly)
 
 		If Not (wb is Nothing) Then
@@ -344,9 +347,15 @@ Class clsMSExcel
 		End if ' If Not (wb is Nothing) Then
 
 		On error Resume Next
-		wb.Close
-	  Set wb = Nothing
-		On error GOto 0
+		' Don't save changes
+		wb.Close False
+		Set wb = Nothing
+		On error GoTo 0
+
+		' Restore settings
+		oApplication.DisplayAlerts = True
+		oApplication.EnableEvents = True
+		oApplication.ScreenUpdating = True
 
 	End Sub
 
