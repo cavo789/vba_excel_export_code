@@ -28,6 +28,10 @@ Option Explicit
 
 Const bVerbose = True
 
+' Location, if installed, of 7-zip. Will make the export of the 
+' ribbon manifest faster
+Const ZipProgram = "C:\Program Files\7-Zip\7z.exe"
+
 Const vbext_ct_StdModule = 1
 Const vbext_ct_ClassModule = 2
 Const vbext_ct_MSForm = 3
@@ -301,55 +305,75 @@ Class clsMSExcel
 	'
 	' Use the built-in unzip feature of Windows and export
 	' the "customUI" folder. That folder contains the ribbon
-	'
-	' Note: this is sooooo slow, why? The Unzip feature is 
-	' native Windows 10. Do we need to use a secret option?
 	' --------------------------------------------------
 	Private Sub exportRibbonXML(ByVal sExportPath)
 	
 		Dim oShell, FilesInZip, file
-		Dim sFolder
+		Dim sFolder, sScript
 
 		' Initialization
 		sFolder = sExportPath & "\Ribbon"
 
-		wScript.Echo "Prepare exportation of the ribbon (if there is one)"
-		wScript.Echo "	Export ribbon to " & sFolder
+		wScript.echo "Prepare exportation of the ribbon"
+		wScript.echo "  Export to " & sFolder
 
-		' Open the zip and retrieve the ribbon (if there is one)
-		Set oShell = CreateObject("Shell.Application")
+		If cFiles.exists(ZipProgram) Then
 
-		' oShell.NameSpace requires a .zip file (the extension is really important)
-		' So add ".zip" to our file (so f.i. rename to "workbook.xlsx.zip")
-		cFiles.Rename sFileName, sFileName & ".zip"
+			' Fatest way - Use 7-Zip
 
-		' Now, we can get the list of files in the "zip"
-		Set FilesInZip=oShell.NameSpace(sFileName & ".zip").items
+			Set oShell = CreateObject("wScript.Shell")
 
-		For each file In FilesInZip
+			sScript = chr(34) & ZipProgram & chr(34) & " x -y " & _
+				chr(34) & sFilename & chr(34) & " " & _
+				"customUI -o" & chr(34) & sFolder & chr(34)
+			wScript.echo "  Use 7-zip (" & sScript & ")"
 
-			' When file name is "customUI", we've found the folder (not the file)
-			' with the manifest and icons. Export them
-			If (file.Name = "customUI") Then
+			oShell.Run sScript
 
-				' Create the target folder
-				cFolders.Create(sFolder) 
+		Else
 
-				' And export the ribbon (i.e. the folder called "customUI")
-				' 100 = Display a progression bar 
-				'  10 = Overwrite if the same file is already found in sFolder
-				oShell.NameSpace(sFolder).CopyHere(file), &H110
+			' Use the Zip built-in feature of Windows
+			Set oShell = CreateObject("Shell.Application")
 
-				' Ok, we can stop, we got the ribbon
-				Exit For
+			' Open the zip and retrieve the ribbon (if there is one)
+			
+			' oShell.NameSpace requires a .zip file (the extension is really important)
+			' So add ".zip" to our file (so f.i. rename to "workbook.xlsx.zip")
+			cFiles.Rename sFileName, sFileName & ".zip"
 
-			End if
-		Next
+			' Now, we can get the list of files in the "zip"
+			' ------------------------------------------------------------------
+			' - THIS LINE IS REALLY REALLY SLOW (CAN TAKE TWO MINUTES OR MORE) -
+			' ------------------------------------------------------------------
+			Set FilesInZip=oShell.NameSpace(sFileName & ".zip").items
 
-		' Reset the original name
-		cFiles.Rename sFileName & ".zip", sFileName
+			For each file In FilesInZip
 
-		Set FilesInZip = Nothing
+				' When file name is "customUI", we've found the folder (not the file)
+				' with the manifest and icons. Export them
+				If (file.Name = "customUI") Then
+
+					' Create the target folder
+					cFolders.Create(sFolder) 
+
+					' And export the ribbon (i.e. the folder called "customUI")
+					' 100 = Display a progression bar 
+					'  10 = Overwrite if the same file is already found in sFolder
+					oShell.NameSpace(sFolder).CopyHere(file), &H110
+
+					' Ok, we can stop, we got the ribbon
+					Exit For
+
+				End if
+			Next
+
+			' Reset the original name
+			cFiles.Rename sFileName & ".zip", sFileName
+
+			Set FilesInZip = Nothing
+
+		End if
+
 		Set oShell = Nothing
 
 	End Sub
@@ -389,7 +413,7 @@ Class clsMSExcel
 
 		' Make the filename absolute; add the parent folder if needed
 		If (sFileName = cFiles.GetBaseName(sFileName) & "." & cFiles.GetExtensionName(sFileName)) Then
-		 	sFileName = cFiles.GetParentFolderName(sFileName) + "\" + sFileName
+			sFileName = cFiles.GetParentFolderName(sFileName) + "\" + sFileName
 		End If
 
 		' Open Excel
@@ -420,7 +444,10 @@ Class clsMSExcel
 						' Extra security : be sure the project has a name,
 						' should always be the case
 
+						wScript.echo "Export to " & sExportPath
 						Call cFolders.Create(sExportPath)
+
+						wScript.echo ""
 
 						For Each vbComponent In project.VBComponents
 
