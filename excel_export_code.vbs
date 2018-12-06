@@ -7,6 +7,8 @@
 ' (classes, forms, modules and worksheet code) and will export
 ' these objects on the filesystem as text file.
 '
+' Export the ribbon (if there is one), manifest and icons.
+'
 ' By ussing the script on f.i; the file called c:\repo\cavo.xlam,
 ' this script will create the folder c:\repo\src\cavo.xlam\ and, there,
 ' one file for each classes, forms, modules and sheets with code.
@@ -31,99 +33,135 @@ Const vbext_ct_ClassModule = 2
 Const vbext_ct_MSForm = 3
 Const vbext_ct_Document = 100
 
-Class clsHelper
+Class clsFiles
 
-	' --------------------------------------------------
-	' Return the diranem() of the file
-	' --------------------------------------------------
-	Public Function getFolder(sFileName)
+	Dim objFSO, objFile
 
-		Dim sFolder
-		Dim objFSO, objFile
+	Private bVerbose
 
+	Public Property Let verbose(bYesNo)
+		bVerbose = bYesNo
+	End Property
+
+	Private Sub Class_Initialize()
+		bVerbose = False
 		Set objFSO = CreateObject("Scripting.FileSystemObject")
-		Set objFile = objFSO.GetFile(sFileName)
+	End Sub
 
-		sFolder = objFSO.GetParentFolderName(objFile) & "\"
+	Private Sub Class_Terminate()
+		Set objFSO = Nothing
+	End Sub
 
-		Set objFile = Nothing
-		set objFSO = Nothing
-
-		getFolder = sFolder
-
+	Public Function Exists(ByVal sFileName)
+		Exists = objFSO.FileExists(sFileName)
 	End Function
 
-	' --------------------------------------------------
-	' Derive the export path for the project
-	' --------------------------------------------------
-	Public Function getExportPath(sFileName)
+	Public Function Delete(ByVal sFileName)
+		Delete = objFSO.DeleteFile(sFileName)
+	End Function
+	
+	Public Function Rename(ByVal sFileName, ByVal sNewName)
 
-		Dim sExportPath
-		Dim objFSO
+		If (Exists(sNewName)) Then
+			Delete(sNewName)
+		End If
+	
+		objFSO.MoveFile sFileName, sNewName
+	
+		Rename = Exists(sNewName)
+	
+	End Function
+	
+	' --------------------------------------------------
+	' Return the file extension (f.i. "accdb")
+	' --------------------------------------------------
+	Public Function GetExtensionName(ByVal sFileName)
+		GetExtensionName = objFSO.GetExtensionName(sFileName)
+	End Function 
 
+	' --------------------------------------------------
+	' Return only the file name (f.i. "db1")
+	' --------------------------------------------------
+	Public Function GetBaseName(ByVal sFileName)
+		GetBaseName = objFSO.GetBaseName(sFileName)
+	End Function 
+
+	' --------------------------------------------------
+	' Return the folder where the file is stored (f.i. c:\temp)
+	' --------------------------------------------------
+	Public Function GetParentFolderName(ByVal sFileName)
+
+		Dim sPath
+		Dim objShell
+
+		sPath = ""
+
+		If (Exists(sFileName)) Then
+
+			sPath = objFSO.GetParentFolderName(sFileName)
+
+			' sPath is empty when sFileName was just a filename 
+			' like f.i. "workbook.xlsx". So, in that case, get the current 
+			' folder and concatenate
+			If (sPath = "") Then
+				Set objShell = WScript.CreateObject("WScript.Shell")
+				sPath = objShell.CurrentDirectory 
+				Set objShell = Nothing
+			End If 
+
+		End If
+
+		GetParentFolderName = sPath
+
+	End Function 
+
+End Class
+
+Class clsFolders
+
+	Dim objFSO, objFile
+
+	Private bVerbose
+
+	Public Property Let verbose(bYesNo)
+		bVerbose = bYesNo
+	End Property
+
+	Private Sub Class_Initialize()
+		bVerbose = False
 		Set objFSO = CreateObject("Scripting.FileSystemObject")
+	End Sub
 
-		sExportPath = getFolder(sFileName)
-		sExportPath = sExportPath & "src\"
-		sExportPath = sExportPath & objFSO.GetFileName(sFileName)
-
+	Private Sub Class_Terminate()
 		Set objFSO = Nothing
+	End Sub
 
-		getExportPath = sExportPath
-
-	End function
+	Public Function Exists(sFolderName)
+	    Exists = objFSO.FolderExists(sFolderName)
+	End Function
 
 	' --------------------------------------------------
 	' Create a folder recursively
 	' --------------------------------------------------
-	Public Function CreateFolder(sFolderName)
+	Public Function Create(ByVal sFolderName)
 
-		Dim objFSO
-		Dim bReturn
+		Create = false
 
-		bReturn = false
+		If Not exists(sFolderName) Then
 
-		Set objFSO = CreateObject("Scripting.FileSystemObject")
+			If Create(objFSO.GetParentFolderName(sFolderName)) Then
+				Create = True
 
-		If Not objFSO.FolderExists(sFolderName) Then
-
-			If CreateFolder(objFSO.GetParentFolderName(sFolderName)) Then
-
-				bReturn = True
+				If bVerbose Then
+					wScript.echo "Create folder " & sFolderName 
+				End If
 
 				Call objFSO.CreateFolder(sFolderName)
-
 			End If
 
 		Else
-
-			bReturn = True
-
+			Create = True
 		End If
-
-		Set objFSO = Nothing
-
-		CreateFolder = bReturn
-
-	End Function
-
-	' --------------------------------------------------
-	' Return the current folder i.e. the folder from where
-	' the script has been started
-	'
-	' See documentation : https://github.com/cavo789/vbs_scripts/blob/master/src/classes/Folders.md#getcurrentfolder
-	' --------------------------------------------------
-	Public Function getCurrentFolder()
-
-		Dim sFolder, objFSO, objFile
-
-		Set objFSO = CreateObject("Scripting.FileSystemObject")
-		Set objFile = objFSO.GetFile(Wscript.ScriptName)
-		sFolder = objFSO.GetParentFolderName(objFile) & "\"
-		Set objFile = Nothing
-		Set objFSO = Nothing
-
-		getCurrentFolder = sFolder
 
 	End Function
 
@@ -134,7 +172,8 @@ Class clsMSExcel
 	Private oApplication
 	Private sFileName
 	Private bAppHasBeenStarted
-	Private cHelper
+	Private cFiles
+	Private cFolders
 
 	Public Property Let FileName(ByVal sName)
 		sFileName = sName
@@ -147,12 +186,15 @@ Class clsMSExcel
 	Private Sub Class_Initialize()
 		bAppHasBeenStarted = False
 		Set oApplication = Nothing
-		Set cHelper = New clsHelper
+			
+		Set cFiles = new clsFiles
+		Set cFolders = new clsFolders
 	End Sub
 
 	Private Sub Class_Terminate()
 		Set oApplication = Nothing
-		Set cHelper = Nothing
+		Set cFiles = Nothing
+		Set cFolders = Nothing
 	End Sub
 
 	' --------------------------------------------------------
@@ -200,9 +242,9 @@ Class clsMSExcel
 	End Sub
 
 	' --------------------------------------------------
-		' Detect if the module, class, form has code (Y/N)
+	' Detect if the module, class, form has code (Y/N)
 	' --------------------------------------------------
-	Private Function hasCodeToExport(Component)
+	Private Function hasCodeToExport(ByVal Component)
 
 		Dim sFirstLine
 
@@ -218,7 +260,7 @@ Class clsMSExcel
 	' --------------------------------------------------
 	' Export class, module or form to a text file on disk)
 	' --------------------------------------------------
-	Private Sub exportComponent(sExportPath, Component, sExtension)
+	Private Sub exportComponent(ByVal sExportPath, ByVal Component, ByVal sExtension)
 
 		If bVerbose Then
 			wScript.echo "  Export " & Component.name & sExtension
@@ -231,13 +273,12 @@ Class clsMSExcel
 	' --------------------------------------------------
 	' Export sheet to a text file on disk)
 	' --------------------------------------------------
-	Private Sub exportLines(sExportPath, Component)
+	Private Sub exportLines(ByVal sExportPath, ByVal Component)
 
 		Dim sFileName
 		Dim objFSO, outStream
 
 		Set objFSO = CreateObject("Scripting.FileSystemObject")
-		'Set outStream = CreateObject("TextStream")
 
 		sFileName = sExportPath & "\" & Component.name & ".sheet.cls"
 
@@ -256,6 +297,64 @@ Class clsMSExcel
 	End Sub
 
 	' --------------------------------------------------
+	' Export the ribbon and icons (if applicable)
+	'
+	' Use the built-in unzip feature of Windows and export
+	' the "customUI" folder. That folder contains the ribbon
+	'
+	' Note: this is sooooo slow, why? The Unzip feature is 
+	' native Windows 10. Do we need to use a secret option?
+	' --------------------------------------------------
+	Private Sub exportRibbonXML(ByVal sExportPath)
+	
+		Dim oShell, FilesInZip, file
+		Dim sFolder
+
+		' Initialization
+		sFolder = sExportPath & "\Ribbon"
+
+		wScript.Echo "Prepare exportation of the ribbon (if there is one)"
+		wScript.Echo "	Export ribbon to " & sFolder
+
+		' Open the zip and retrieve the ribbon (if there is one)
+		Set oShell = CreateObject("Shell.Application")
+
+		' oShell.NameSpace requires a .zip file (the extension is really important)
+		' So add ".zip" to our file (so f.i. rename to "workbook.xlsx.zip")
+		cFiles.Rename sFileName, sFileName & ".zip"
+
+		' Now, we can get the list of files in the "zip"
+		Set FilesInZip=oShell.NameSpace(sFileName & ".zip").items
+
+		For each file In FilesInZip
+
+			' When file name is "customUI", we've found the folder (not the file)
+			' with the manifest and icons. Export them
+			If (file.Name = "customUI") Then
+
+				' Create the target folder
+				cFolders.Create(sFolder) 
+
+				' And export the ribbon (i.e. the folder called "customUI")
+				' 100 = Display a progression bar 
+				'  10 = Overwrite if the same file is already found in sFolder
+				oShell.NameSpace(sFolder).CopyHere(file), &H110
+
+				' Ok, we can stop, we got the ribbon
+				Exit For
+
+			End if
+		Next
+
+		' Reset the original name
+		cFiles.Rename sFileName & ".zip", sFileName
+
+		Set FilesInZip = Nothing
+		Set oShell = Nothing
+
+	End Sub
+
+	' --------------------------------------------------
 	' Export the code of a workbook (can be an addin)
 	' --------------------------------------------------
 	Public Sub ExportVBACode()
@@ -269,24 +368,31 @@ Class clsMSExcel
 		Set objFSO = CreateObject("Scripting.FileSystemObject")
 
 		If Not (objFSO.FileExists(sFileName)) Then
-		 	wScript.echo "Error, the file "+sFileName+ " is not found"
+		 	wScript.echo "Error, the file " & sFileName & " is not found"
 			Exit sub
-		End if
-
+		End If
+		
 		bUpdateLinks = False
 		bReadOnly = True
 
-		' Retrieve the folder name of the specified file.
-		' When the folder is empty, it means that the file
-		' is within the current folder so make the fileName
-		' absolute to prevent an error "File not found" fired
-		' by Excel.
-		sFolder = objFSO.GetParentFolderName(sFileName)
-		If (sFolder = "") Then
-		 	sFolder = cHelper.getCurrentFolder()
-			sFileName = sFolder + "\" + sFileName
+		' Get the parent folder i.e. the folder where the Excel file is stored
+		sFolder = cFiles.GetParentFolderName(sFileName)
+
+		' Get the export path
+		' When sFileName is f.i. c:\temp\workbook.xlsm, the export path will be
+		'  		c:\temp\src\workbook.xlsm\xxxxx
+		' i.e. a subfolder src will be created with a folder for the file and, in that folder
+		' every objects (forms, modules, ...) and also the ribbon
+
+		sExportPath = sFolder & "\src\" & cFiles.GetBaseName(sFileName) & "." & _
+			cFiles.GetExtensionName(sFileName)
+
+		' Make the filename absolute; add the parent folder if needed
+		If (sFileName = cFiles.GetBaseName(sFileName) & "." & cFiles.GetExtensionName(sFileName)) Then
+		 	sFileName = cFiles.GetParentFolderName(sFileName) + "\" + sFileName
 		End If
 
+		' Open Excel
 		oApplication.DisplayAlerts = False
 		oApplication.EnableEvents = False
 		oApplication.ScreenUpdating = False
@@ -297,35 +403,30 @@ Class clsMSExcel
 
 			For Each project In oApplication.VBE.VBProjects
 
-			  sTemp = "= Exporting code of " & project.name & " ="
+				If (project.Protection = 0) Then 
 
-				wScript.echo Replace(Space(Len(sTemp)), " ", "=") & vbCrLF & _
-					sTemp & vbCrLf & Replace(Space(Len(sTemp)), " ", "=") & vbCrLf
+					sTemp = "= Exporting code of " & project.name & " ="
 
-				sProjectFileName = project.fileName
+					wScript.echo Replace(Space(Len(sTemp)), " ", "=") & vbCrLF & _
+						sTemp & vbCrLf & Replace(Space(Len(sTemp)), " ", "=") & vbCrLf
 
-				If bVerbose Then
-					wScript.echo "Process " & sProjectFileName
-				End If
+					sProjectFileName = project.fileName
 
-				If (sProjectFileName <> "") Then
-					' Extra security : be sure the project has a name,
-					' should always be the case
+					If bVerbose Then
+						wScript.echo "Process " & sProjectFileName
+					End If
 
-					' Derive the folder name where to put the VBA source code'
-					' Get the folder name of the project'
-					' Get something like c:\folder\application\src\filename
+					If (sProjectFileName <> "") Then
+						' Extra security : be sure the project has a name,
+						' should always be the case
 
-					sExportPath = cHelper.getExportPath(sProjectFileName)
+						Call cFolders.Create(sExportPath)
 
-					Call cHelper.CreateFolder(sExportPath)
+						For Each vbComponent In project.VBComponents
 
-					For Each vbComponent In project.VBComponents
-
-						If hasCodeToExport(vbComponent) Then
+							If hasCodeToExport(vbComponent) Then
 
 								Select Case vbComponent.Type
-
 									Case vbext_ct_ClassModule
 										exportComponent sExportPath, vbComponent, ".cls"
 									Case vbext_ct_StdModule
@@ -336,26 +437,48 @@ Class clsMSExcel
 										exportLines sExportPath, vbComponent
 								Case Else
 									wScript.echo "Unkown vbComponent type " & vbComponent.Name
-							End Select
-						End If
-					Next ' For Each vbComponent
+								End Select
 
-				End if ' If (sProjectFileName <> "") Then'
+							End If
+						Next
 
-			Next ' For Each project
+					End If
 
-		End if ' If Not (wb is Nothing) Then
+				Else
+
+					wScript.echo "ERROR - " & project.name & " is protected with a password, "
+					wScript.echo "If you want to export code, please first start Excel, open the file, "
+					wScript.echo "go to the VB editor and type your password so the code become accessible."
+					wScript.echo "Without exiting Excel, start this script again."
+
+				End if
+
+				wScript.echo ""
+
+			Next
+
+		End if
 
 		On error Resume Next
+
+		' Fake, let Excel think the file wasn't modified
+		wb.Saved = True
+
 		' Don't save changes
 		wb.Close False
+
 		Set wb = Nothing
+
 		On error GoTo 0
 
 		' Restore settings
 		oApplication.DisplayAlerts = True
 		oApplication.EnableEvents = True
 		oApplication.ScreenUpdating = True
+
+		' And now, export the ribbon 
+		' Note: this is a really slow process; strange...
+		Call exportRibbonXML(sExportPath)
 
 	End Sub
 
@@ -384,7 +507,7 @@ End sub
 ' -----------------------------------------------------
 ' -------------------- ENTRY POINT --------------------
 ' -----------------------------------------------------
-'
+
 Dim cMSExcel
 Dim sFileName
 
@@ -395,7 +518,7 @@ Dim sFileName
 
 	Else
 		' Get the file name
-		sFileName = UCase(Trim(Wscript.Arguments.Item(0)))
+		sFileName = Trim(Wscript.Arguments.Item(0))
 
 		Set cMSExcel = New clsMSExcel
 

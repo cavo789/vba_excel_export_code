@@ -1,6 +1,6 @@
 # Excel - Export code to flat files
 
-> Export every code objects (classes, forms, modules and worksheet code) to flat fliles, in a batch mode
+> Export every code objects (classes, forms, modules and worksheet code) to flat files, in a batch mode. Export the ribbon manifest and icons too.
 
 ## Table of Contents
 
@@ -19,6 +19,8 @@ This way, you'll get a quick backup of your code and you'll be able to synchroni
 The script will start Excel (hidden way), open the specified file, process every code object and export them, one by one, in a `\src\your_file.xlsm` folder.
 
 The `src` folder will be automatically created if needed and you'll find a sub-folder having the same name of your file (so you can have more than one exported file in the same src folder).
+
+If your Excel file also contains a ribbon, the manifest (i.e. the `xml` of the ribbon) and custom icons will also be exported.
 
 ## Install
 
