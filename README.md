@@ -18,7 +18,7 @@ This VB script will export all code objects (classes, forms, modules and workshe
 
 This way, you'll get a quick backup of your code and you'll be able to synchronize your code on a versioning platform like GitHub.
 
-The script will start Excel (hidden way), open the specified file, process every code object and export them, one by one, in a `\src\your_file.xlsm` folder.
+The script will start Excel (hidden way), open the specified file, process every code object and export them, one by one, in a `\src\your_file_xlsm` folder.
 
 The `src` folder will be automatically created if needed and you'll find a sub-folder having the same name of your file (so you can have more than one exported file in the same src folder).
 
