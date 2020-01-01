@@ -417,7 +417,7 @@ Class clsMSExcel
 		' i.e. a subfolder src will be created with a folder for the file and, in that folder
 		' every objects (forms, modules, ...) and also the ribbon
 
-		sExportPath = sFolder & "\src\" & cFiles.GetBaseName(sFileName) & "." & _
+		sExportPath = sFolder & "\src\" & cFiles.GetBaseName(sFileName) & "_" & _
 			cFiles.GetExtensionName(sFileName)
 
 		' Make the filename absolute; add the parent folder if needed
