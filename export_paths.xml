@@ -1,8 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <modules>
-	<!--module>
-		<name>MExcel</name>
-		<outputFile>\SubModules\vba-supporting-libraries\MExcel.bas</outputFile>
-		<VBAComponent>MExcel.bas</VBAComponent>
-	</module!-->
+	<!--> Create copies of the example module below for each custom object that you want to export</-->
+	<!--module componentName="CustomExport" outputFilePath="\CustomModules\Custom"/-->
 </modules>

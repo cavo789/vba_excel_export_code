@@ -26,21 +26,24 @@ If your Excel file also contains a ribbon, the manifest (i.e. the `xml` of the r
 
 ## Install
 
-Just get a copy of the `.vbs` script, perhaps the `.cmd` too (for your easiness) and save them in the same folder of your Excel application (containing the code you want to export).
+Just get a copy of the `.vbs` script, perhaps the `.cmd` too (for your easiness) and save them in the same folder of your Excel application (containing the code you want to export). 
+You may copy the export_paths.xml file if you want some modules to be exported to custom folders.
 
 ## Usage
 
 Just edit the `.cmd` file and you'll see how it works: you just need to run the `.vbs` with one parameter, the name of your file.
+Update the paths in export_paths.xml if you want some modules to be exported to custom folders.
 
 ![demo](image/demo.png)
 
 ## Author
 
 Christophe Avonture
+Updated by Prince Biswaranjan
 
 ## Contribute
 
-PRs not accepted.
+PRs not accepted to Original repo. PRs are accepted to pbvirus repo
 
 ## License
 

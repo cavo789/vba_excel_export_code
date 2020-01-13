@@ -297,7 +297,7 @@ Class clsMSExcel
 		If bVerbose Then
 			wScript.echo "  Export " & Component.name & ".sheet.cls"
 		End If
-
+		
 		Set outStream = objFSO.CreateTextFile(sFileName, True, False)
 
 		outStream.Write (Component.codeModule.lines(1, Component.codeModule.CountOfLines))
@@ -397,6 +397,7 @@ Class clsMSExcel
 		Dim sProjectFileName, sExportPath, sTemp, sFolder
 		Dim vbComponent
 		Dim bContinue
+		Dim dictExportPaths, sExportPathsXml
 
 		Set objFSO = CreateObject("Scripting.FileSystemObject")
 
@@ -404,21 +405,23 @@ Class clsMSExcel
 		 	wScript.echo "Error, the file " & sFileName & " is not found"
 			Exit sub
 		End If
-
+		
+		
+		
 		bUpdateLinks = False
 		bReadOnly = True
 
 		' Get the parent folder i.e. the folder where the Excel file is stored
 		sFolder = cFiles.GetParentFolderName(sFileName)
-
-		' Get the export path
-		' When sFileName is f.i. c:\temp\workbook.xlsm, the export path will be
-		'  		c:\temp\src\workbook.xlsm\xxxxx
-		' i.e. a subfolder src will be created with a folder for the file and, in that folder
-		' every objects (forms, modules, ...) and also the ribbon
-
-		sExportPath = sFolder & "\src\" & cFiles.GetBaseName(sFileName) & "_" & _
-			cFiles.GetExtensionName(sFileName)
+		
+		'Load Custom export paths
+		sExportPathsXml = sFolder & "\export_paths.xml"
+		
+		If objFSO.FileExists(sExportPathsXml) Then
+			Set dictExportPaths = GetModuleExportPaths(sExportPathsXml)
+		Else
+			Set dictExportPaths = CreateObject("Scripting.Dictionary")
+		End If
 
 		' Make the filename absolute; add the parent folder if needed
 		If (sFileName = cFiles.GetBaseName(sFileName) & "." & cFiles.GetExtensionName(sFileName)) Then
@@ -466,16 +469,34 @@ Class clsMSExcel
 						If (sProjectFileName <> "") Then
 							' Extra security : be sure the project has a name,
 							' should always be the case
-
-							wScript.echo "Export to " & sExportPath
-							Call cFolders.Create(sExportPath)
-
+							
 							wScript.echo ""
 
 							For Each vbComponent In project.VBComponents
+							
+								
+								
 
 								If hasCodeToExport(vbComponent) Then
+									' Get the export path
+									' When sFileName is f.i. c:\temp\workbook.xlsm, the export path will be
+									'  		c:\temp\src\workbook.xlsm\xxxxx
+									' i.e. a subfolder src will be created with a folder for the file and, in that folder
+									' every objects (forms, modules, ...) and also the ribbon
+									' Any custom export path mentioned in export_paths.xml will be respected.
 
+									
+									If dictExportPaths.Exists(vbComponent.Name) Then
+										sExportPath = sFolder & dictExportPaths.Item(vbComponent.Name)
+									Else
+										sExportPath = sFolder & "\src\" & cFiles.GetBaseName(sFileName) & "_" & _
+											cFiles.GetExtensionName(sFileName)
+									End If
+									
+									cFolders.Create(sExportPath)
+									
+									wScript.echo "Export to " & sExportPath
+									
 									Select Case vbComponent.Type
 										Case vbext_ct_ClassModule
 											exportComponent sExportPath, vbComponent, ".cls"
@@ -558,12 +579,56 @@ Sub ShowHelp()
 
 End sub
 
+Function GetXmlFromFile(ByVal xmlFilePath)
+    'Variable(s) Declaration
+    Dim xmlDocument
+    
+    'Variable(s) Initialization
+    Set xmlDocument = CreateObject("Microsoft.XMLDOM")
+    
+    'Load XML
+    xmlDocument.async = False
+    xmlDocument.Load (xmlFilePath)
+    
+    Set GetXmlFromFile = xmlDocument
+End Function
+
+
+Function GetModuleExportPaths(ByVal exportPathsXml)
+    'Variable(s) Declaration
+    Dim xmlDocument
+    Dim moduleList
+    Dim module
+    Dim moduleDict
+    Dim moduleName
+    Dim moduleExportPath
+    
+    'Variable(s) Initialization
+    Set xmlDocument = GetXmlFromFile(exportPathsXml)
+    Set moduleDict = CreateObject("Scripting.Dictionary")
+    
+    'Extract modules
+    Set moduleList = xmlDocument.DocumentElement.SelectNodes("//module")
+    For Each module In moduleList
+        moduleName = module.getAttribute("componentName")
+        moduleExportPath = module.getAttribute("outputFilePath")
+        
+        If Not moduleDict.Exists(moduleName) Then
+            moduleDict.Add moduleName, moduleExportPath
+        End If
+    Next
+    
+    Set GetModuleExportPaths = moduleDict
+End Function
+
+
 ' -----------------------------------------------------
 ' -------------------- ENTRY POINT --------------------
 ' -----------------------------------------------------
 
 Dim cMSExcel
 Dim sFileName
+
 
 	' Get the first argument
 	If (wScript.Arguments.Count = 0) Then
