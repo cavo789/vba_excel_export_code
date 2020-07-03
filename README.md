@@ -1,16 +1,19 @@
-![demo](image/banner.jpg)
-
 # Excel - Export code to flat files
+
+![banner](./image/banner.jpg)
 
 > Export every code objects (classes, forms, modules and worksheet code) to flat files, in a batch mode. Export the ribbon manifest and icons too.
 
 ## Table of Contents
 
-- [Description](#description)
-- [Install](#install)
-- [Usage](#usage)
-- [Author](#author)
-- [License](#license)
+* [Table of Contents](#table-of-contents)
+* [Description](#description)
+* [Install](#install)
+* [Usage](#usage)
+* [See also](#see-also)
+* [Author](#author)
+* [Contribute](#contribute)
+* [License](#license)
 
 ## Description
 
@@ -32,7 +35,11 @@ Just get a copy of the `.vbs` script, perhaps the `.cmd` too (for your easiness)
 
 Just edit the `.cmd` file and you'll see how it works: you just need to run the `.vbs` with one parameter, the name of your file.
 
-![demo](image/demo.png)
+![demo](./image/demo.png)
+
+## See also
+
+See also the [https://github.com/cavo789/vbs_xls_import_code](https://github.com/cavo789/vbs_xls_import_code) that do the opposite: import codebase into Excel.
 
 ## Author
 
