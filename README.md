@@ -1,6 +1,6 @@
 # Excel - Export code to flat files
 
-![banner](./image/banner.jpg)
+![banner](./banner.svg)
 
 > Export every code objects (classes, forms, modules and worksheet code) to flat files, in a batch mode. Export the ribbon manifest and icons too.
 
